@@ -70,6 +70,7 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
     protected int defaultConditionRefreshInterval;
     protected int delaySend;
     protected boolean catchOtherActionBar;
+    protected int otherActionBarStayTime;
 
     protected String namespace;
     protected String font;
@@ -107,6 +108,8 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
     protected boolean chatAdvanced;
     protected boolean chatEss;
 
+    protected String configVersion;
+
     public ConfigManager(CustomNameplates plugin) {
         this.plugin = plugin;
         instance = this;
@@ -114,42 +117,39 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
 
     @Override
     public void load() {
-        String configVersion = CustomNameplatesProperties.getValue("config");
-        try (InputStream inputStream = new FileInputStream(resolveConfig("config.yml").toFile())) {
-            MAIN_CONFIG = YamlDocument.create(
-                    inputStream,
-                    plugin.getResourceStream("config.yml"),
-                    GeneralSettings.builder()
-                            .setRouteSeparator('.')
-                            .setUseDefaults(false)
-                            .build(),
-                    LoaderSettings
-                            .builder()
-                            .setAutoUpdate(true)
-                            .build(),
-                    DumperSettings.builder()
-                            .setEscapeUnprintable(false)
-                            .setScalarFormatter((tag, value, role, def) -> {
-                                if (role == NodeRole.KEY) {
-                                    return ScalarStyle.PLAIN;
-                                } else {
-                                    return tag == Tag.STR ? ScalarStyle.DOUBLE_QUOTED : ScalarStyle.PLAIN;
-                                }
-                            })
-                            .build(),
-                    UpdaterSettings
-                            .builder()
-                            .setVersioning(new BasicVersioning("config-version"))
-                            .addIgnoredRoute(configVersion, "other-settings.placeholder-refresh-interval", '.')
-                            .addIgnoredRoute(configVersion, "other-settings.font-templates", '.')
-                            .addIgnoredRoute(configVersion, "other-settings.shift-fonts", '.')
-                            .build()
-            );
+        configVersion = CustomNameplatesProperties.getValue("config");
+        MAIN_CONFIG = loadConfig("config.yml",
+                GeneralSettings.builder()
+                        .setRouteSeparator('.')
+                        .setUseDefaults(false)
+                        .build(),
+                LoaderSettings
+                        .builder()
+                        .setAutoUpdate(true)
+                        .build(),
+                DumperSettings.builder()
+                        .setEscapeUnprintable(false)
+                        .setScalarFormatter((tag, value, role, def) -> {
+                            if (role == NodeRole.KEY) {
+                                return ScalarStyle.PLAIN;
+                            } else {
+                                return tag == Tag.STR ? ScalarStyle.DOUBLE_QUOTED : ScalarStyle.PLAIN;
+                            }
+                        })
+                        .build(),
+                UpdaterSettings
+                        .builder()
+                        .setVersioning(new BasicVersioning("config-version"))
+                        .addIgnoredRoute(configVersion, "other-settings.placeholder-refresh-interval", '.')
+                        .addIgnoredRoute(configVersion, "other-settings.font-templates", '.')
+                        .addIgnoredRoute(configVersion, "other-settings.shift-fonts", '.')
+                        .build());
+        try {
             MAIN_CONFIG.save(resolveConfig("config.yml").toFile());
-            loadSettings();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        loadSettings();
     }
 
     private void loadSettings() {
@@ -213,6 +213,7 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
         defaultPlaceholderRefreshInterval = config.getInt("other-settings.default-placeholder-refresh-interval", 1);
         defaultConditionRefreshInterval = config.getInt("other-settings.ddefault-condition-refresh-interval", 1);
         catchOtherActionBar = config.getBoolean("other-settings.catch-other-plugin-actionbar", true);
+        otherActionBarStayTime = config.getInt("other-settings.other-actionbar-stay-time", 3000);
     }
 
     @Override
@@ -254,6 +255,10 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
 
     public static String font() {
         return instance.font;
+    }
+
+    public static String configVersion() {
+        return instance.configVersion;
     }
 
     public static char initialChar() {
@@ -334,6 +339,10 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
 
     public static int defaultConditionRefreshInterval() {
         return instance.defaultConditionRefreshInterval;
+    }
+
+    public static int otherActionBarStayTime() {
+        return instance.otherActionBarStayTime;
     }
 
     public static boolean enableShader() {
@@ -417,6 +426,23 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
     }
 
     @Override
+    public YamlDocument loadConfig(String filePath, GeneralSettings generalSettings, LoaderSettings loaderSettings, DumperSettings dumperSettings, UpdaterSettings updaterSettings) {
+        try (InputStream inputStream = new FileInputStream(resolveConfig(filePath).toFile())) {
+            return YamlDocument.create(
+                    inputStream,
+                    plugin.getResourceStream(filePath),
+                    generalSettings,
+                    loaderSettings,
+                    dumperSettings,
+                    updaterSettings
+            );
+        } catch (IOException e) {
+            plugin.getPluginLogger().severe("Failed to load config " + filePath, e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public YamlDocument loadData(File file) {
         try (InputStream inputStream = new FileInputStream(file)) {
             return YamlDocument.create(inputStream);
@@ -426,7 +452,7 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
         }
     }
 
-    protected Path resolveConfig(String filePath) {
+    public Path resolveConfig(String filePath) {
         if (filePath == null || filePath.isEmpty()) {
             throw new IllegalArgumentException("ResourcePath cannot be null or empty");
         }

@@ -44,8 +44,6 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static java.util.Objects.requireNonNull;
-
 @SuppressWarnings("DuplicatedCode")
 public class PlaceholderManagerImpl implements PlaceholderManager {
 
@@ -315,13 +313,18 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
     }
 
     private void loadVanillaHud(Section section) {
+        if (!ConfigManager.imageModule()) return;
         for (Map.Entry<String, Object> entry : section.getStringRouteMappedValues(false).entrySet()) {
             String id = entry.getKey();
             if (entry.getValue() instanceof Section inner) {
                 boolean reverse = inner.getBoolean("reverse", true);
-                Image empty = requireNonNull(plugin.getImageManager().imageById(inner.getString("images.empty")), "image.empty should not be null");
-                Image half = requireNonNull(plugin.getImageManager().imageById(inner.getString("images.half")), "image.half should not be null");
-                Image full = requireNonNull(plugin.getImageManager().imageById(inner.getString("images.full")), "image.full should not be null");
+                Image empty = plugin.getImageManager().imageById(inner.getString("images.empty"));
+                Image half = plugin.getImageManager().imageById(inner.getString("images.half"));
+                Image full = plugin.getImageManager().imageById(inner.getString("images.full"));
+                if (empty == null || half == null || full == null) {
+                    plugin.getPluginLogger().warn("Empty/Half/Full image not found in vanilla hud");
+                    continue;
+                }
                 String currentValue = inner.getString("placeholder.value", "1");
                 String maxValue = inner.getString("placeholder.max-value", currentValue);
                 VanillaHud vanillaHud = new VanillaHud(empty, half, full, reverse, currentValue, maxValue);
@@ -381,6 +384,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
     }
 
     private void loadBubbleTextSection(Section section) {
+        if (!ConfigManager.bubbleModule()) return;
         for (Map.Entry<String, Object> entry : section.getStringRouteMappedValues(false).entrySet()) {
             String id = entry.getKey();
             if (entry.getValue() instanceof Section inner) {
@@ -412,13 +416,14 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
                     childrenText.put(placeholder8, list);
                     childrenText.put(placeholder9, list);
                 } else {
-                    plugin.getPluginLogger().warn("Nameplate [" + bbID + "] not exists");
+                    plugin.getPluginLogger().warn("Bubble [" + bbID + "] not exists");
                 }
             }
         }
     }
 
     private void loadNameplateTextSection(Section section) {
+        if (!ConfigManager.nameplateModule()) return;
         for (Map.Entry<String, Object> entry : section.getStringRouteMappedValues(false).entrySet()) {
             String id = entry.getKey();
             if (entry.getValue() instanceof Section inner) {
@@ -457,6 +462,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
     }
 
     private void loadBackgroundTextSection(Section section) {
+        if (!ConfigManager.backgroundModule()) return;
         for (Map.Entry<String, Object> entry : section.getStringRouteMappedValues(false).entrySet()) {
             String id = entry.getKey();
             if (entry.getValue() instanceof Section inner) {
@@ -705,7 +711,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
             }
         }
         registeredPlaceholders.put(placeholder.id(), placeholder);
-        fasterRefreshIntervals.put(placeholder.countId(), getRefreshInterval(placeholder.id()));
+        fasterRefreshIntervals.put(placeholder.countId(), placeholder.refreshInterval());
         return placeholder;
     }
 
