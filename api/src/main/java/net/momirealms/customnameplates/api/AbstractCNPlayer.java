@@ -17,6 +17,7 @@
 
 package net.momirealms.customnameplates.api;
 
+import io.netty.channel.Channel;
 import net.momirealms.customnameplates.api.feature.Feature;
 import net.momirealms.customnameplates.api.feature.TimeStampData;
 import net.momirealms.customnameplates.api.network.Tracker;
@@ -35,7 +36,9 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public abstract class AbstractCNPlayer implements CNPlayer {
 
     protected final CustomNameplates plugin;
-    protected final Object player;
+    protected final Channel channel;
+
+    protected Object player;
 
     private boolean isLoaded = false;
 
@@ -57,9 +60,9 @@ public abstract class AbstractCNPlayer implements CNPlayer {
 
     private final Map<CNPlayer, Tracker> trackers = Collections.synchronizedMap(new WeakHashMap<>());
 
-    protected AbstractCNPlayer(CustomNameplates plugin, Object player) {
+    protected AbstractCNPlayer(CustomNameplates plugin, Channel channel) {
         this.plugin = plugin;
-        this.player = player;
+        this.channel = channel;
     }
 
     @Override
@@ -166,6 +169,15 @@ public abstract class AbstractCNPlayer implements CNPlayer {
         feature2Placeholders.clear();
     }
 
+    public void setPlayer(Object player) {
+        this.player = player;
+    }
+
+    @Override
+    public Channel channel() {
+        return channel;
+    }
+
     @Override
     public Set<Feature> activeFeatures(Placeholder placeholder) {
         return placeholder2Features.getOrDefault(placeholder, Collections.emptySet());
@@ -206,13 +218,10 @@ public abstract class AbstractCNPlayer implements CNPlayer {
     @Override
     public void addFeature(Feature feature) {
         activeFeatures.add(feature);
-        Set<Placeholder> allPlaceholdersUsedInFeature = feature.allPlaceholders();
-        feature2Placeholders.put(feature, allPlaceholdersUsedInFeature);
-        for (Placeholder placeholder : allPlaceholdersUsedInFeature) {
-            Set<Feature> featureSet = placeholder2Features.computeIfAbsent(placeholder, k -> {
-                forceUpdatePlaceholders(Set.of(placeholder), nearbyPlayers());
-                return new HashSet<>();
-            });
+        Set<Placeholder> allPlaceholders = feature.allPlaceholders();
+        feature2Placeholders.put(feature, allPlaceholders);
+        for (Placeholder placeholder : allPlaceholders) {
+            Set<Feature> featureSet = placeholder2Features.computeIfAbsent(placeholder, k -> new HashSet<>());
             featureSet.add(feature);
         }
     }

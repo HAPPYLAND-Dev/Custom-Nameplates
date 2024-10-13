@@ -11,7 +11,8 @@ force-locale: ''
 
 # Module Settings: Enable or disable specific features.
 modules:
-  nameplates: true           # Enable nameplate display
+  nametags: true             # Enable name tags
+  nameplates: true           # Enable nameplates
   backgrounds: true          # Enable background images for nameplates
   bubbles: true              # Enable bubble text display
   bossbars: true             # Enable bossbars
@@ -61,6 +62,8 @@ other-settings:
   send-delay: 20                      # Set actionbar/bossbar send delay (ticks)
   catch-other-plugin-actionbar: true  # Capture actionbars from other plugins
   other-actionbar-stay-time: 3000     # How long does other actionsbars stay (ms)
+  display-system-actionbar: true      # Should the plugin display system actionbar and temporarily hide the custom actionbar?
+  hide-team-names: true               # Hide the team name sent by other plugins or vanilla team system
   unsafe-chat-event: false            # Listen for canceled(unsafe) chat events from unknown plugins
   default-condition-refresh-interval: 1  # Set default condition refresh interval
   default-placeholder-refresh-interval: 1  # Set default placeholder refresh interval

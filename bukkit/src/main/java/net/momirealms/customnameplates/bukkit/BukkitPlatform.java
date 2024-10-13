@@ -33,17 +33,22 @@ import net.momirealms.customnameplates.api.placeholder.Placeholder;
 import net.momirealms.customnameplates.api.util.Alignment;
 import net.momirealms.customnameplates.api.util.Vector3;
 import net.momirealms.customnameplates.backend.feature.actionbar.ActionBarManagerImpl;
+import net.momirealms.customnameplates.bukkit.util.BiomeUtils;
 import net.momirealms.customnameplates.bukkit.util.EntityData;
 import net.momirealms.customnameplates.bukkit.util.Reflections;
 import net.momirealms.customnameplates.common.util.TriConsumer;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 public class BukkitPlatform implements Platform {
+
+    private static final Pattern LANG_PATTERN = Pattern.compile("<lang:[a-zA-Z0-9._/]+>");
 
     private final CustomNameplates plugin;
     private final boolean placeholderAPI;
@@ -112,17 +117,29 @@ public class BukkitPlatform implements Platform {
                 if (actionBar) {
                     CustomNameplates.getInstance().getScheduler().async().execute(() -> {
                         try {
+                            String miniMessage;
                             if (VersionHelper.isVersionNewerThan1_20_4()) {
                                 // 1.20.4+
                                 Object component = Reflections.field$ClientboundSystemChatPacket$component.get(packet);
                                 if (component == null) return;
-                                ((ActionBarManagerImpl) CustomNameplates.getInstance().getActionBarManager()).handleActionBarPacket(player, AdventureHelper.minecraftComponentToMiniMessage(component));
+                                miniMessage = AdventureHelper.minecraftComponentToMiniMessage(component);
                             } else {
                                 // 1.20.4-
                                 String json = (String) Reflections.field$ClientboundSystemChatPacket$text.get(packet);
                                 if (json == null) return;
-                                ((ActionBarManagerImpl) CustomNameplates.getInstance().getActionBarManager()).handleActionBarPacket(player, AdventureHelper.jsonToMiniMessage(json));
+                                miniMessage = AdventureHelper.jsonToMiniMessage(json);
                             }
+                            if (LANG_PATTERN.matcher(miniMessage).find()) {
+                                if (ConfigManager.displaySystemChat()) {
+                                    ((ActionBarManagerImpl) CustomNameplates.getInstance().getActionBarManager()).temporarilyHideCustomActionBar(player);
+                                    Object com = AdventureHelper.miniMessageToMinecraftComponent(miniMessage, "np", "ab");
+                                    Object pkt = CustomNameplates.getInstance().getPlatform().setActionBarTextPacket(com);
+                                    CustomNameplates.getInstance().getPacketSender().sendPacket(player, pkt);
+                                }
+                                event.cancelled(true);
+                                return;
+                            }
+                            ((ActionBarManagerImpl) CustomNameplates.getInstance().getActionBarManager()).handleActionBarPacket(player, miniMessage);
                         } catch (ReflectiveOperationException e) {
                             throw new RuntimeException(e);
                         }
@@ -278,6 +295,34 @@ public class BukkitPlatform implements Platform {
                 CustomNameplates.getInstance().getPluginLogger().severe("Failed to handle ClientboundSetEntityDataPacket", e);
             }
         }, "ClientboundSetEntityDataPacket", "PacketPlayOutEntityMetadata");
+
+        registerPacketConsumer((player, event, packet) -> {
+            if (!ConfigManager.nametagModule()) return;
+            if (!ConfigManager.hideTeamNames()) return;
+            try {
+                int method = (int) Reflections.field$ClientboundSetPlayerTeamPacket$method.get(packet);
+                if (method == 0 || method == 2) {
+// How to handle mixed entity team packs
+//                    @SuppressWarnings("unchecked")
+//                    Collection<String> entities = (Collection<String>) Reflections.field$ClientboundSetPlayerTeamPacket$players.get(packet);
+//                    outer: {
+//                        for (String entity : entities) {
+//                            if (!UUIDUtils.isUUID(entity)) {
+//                                break outer;
+//                            }
+//                        }
+//                    }
+                    @SuppressWarnings("unchecked")
+                    Optional<Object> optionalParameters = (Optional<Object>) Reflections.field$ClientboundSetPlayerTeamPacket$parameters.get(packet);
+                    if (optionalParameters.isPresent()) {
+                        Object parameters = optionalParameters.get();
+                        Reflections.field$ClientboundSetPlayerTeamPacket$Parameters$nametagVisibility.set(parameters, "never");
+                    }
+                }
+            } catch (ReflectiveOperationException e) {
+                CustomNameplates.getInstance().getPluginLogger().severe("Failed to handle ClientboundSetPlayerTeamPacket", e);
+            }
+        }, "ClientboundSetPlayerTeamPacket", "PacketPlayOutScoreboardTeam");
     }
 
     @Override
@@ -496,6 +541,12 @@ public class BukkitPlatform implements Platform {
     }
 
     @Override
+    public String getBiome(String world, int x, int y, int z) {
+        Location location = new Location(Bukkit.getWorld(world), x, y, z);
+        return BiomeUtils.getBiome(location);
+    }
+
+    @Override
     public Object vec3(double x, double y, double z) {
         try {
             return Reflections.constructor$Vector3f.newInstance((float) x, (float) y, (float) z);
@@ -504,25 +555,29 @@ public class BukkitPlatform implements Platform {
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public void onPacketSend(CNPlayer player, PacketEvent event) {
         try {
             Object packet = event.getPacket();
-            if (Reflections.clazz$ClientboundBundlePacket.isInstance(packet)) {
-                Iterable<Object> packets = (Iterable<Object>) Reflections.field$BundlePacket$packets.get(packet);
-                for (Object p : packets) {
-                    handlePacket(player, event, p);
-                }
-            } else {
-                handlePacket(player, event, packet);
-            }
+            onPacketSend(player, event, packet);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void handlePacket(CNPlayer player, PacketEvent event, Object packet) throws ReflectiveOperationException {
+    @SuppressWarnings("unchecked")
+    private void onPacketSend(CNPlayer player, PacketEvent event, Object packet) throws ReflectiveOperationException {
+        if (Reflections.clazz$ClientboundBundlePacket.isInstance(packet)) {
+            Iterable<Object> packets = (Iterable<Object>) Reflections.field$BundlePacket$packets.get(packet);
+            for (Object p : packets) {
+                onPacketSend(player, event, p);
+            }
+        } else {
+            handlePacket(player, event, packet);
+        }
+    }
+
+    private void handlePacket(CNPlayer player, PacketEvent event, Object packet) {
         Optional.ofNullable(packetFunctions.get(packet.getClass().getSimpleName()))
                 .ifPresent(function -> function.accept(player, event, packet));
     }

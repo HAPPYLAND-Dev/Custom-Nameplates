@@ -110,6 +110,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
     }
 
     private void loadNestNameplatePlaceholders() {
+        if (!ConfigManager.nameplateModule()) return;
         PreParsedDynamicText nameTag = new PreParsedDynamicText(plugin.getNameplateManager().playerNameTag());
         Placeholder placeholder1 = this.registerPlayerPlaceholder("%np_tag-image%", (player -> {
             String equippedNameplate = player.equippedNameplate();
@@ -164,22 +165,35 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
         this.registerPlayerPlaceholder("%player_x%", (player -> String.valueOf((int) Math.floor(player.position().x()))));
         this.registerPlayerPlaceholder("%player_y%", (player -> String.valueOf((int) Math.floor(player.position().y()))));
         this.registerPlayerPlaceholder("%player_z%", (player -> String.valueOf((int) Math.floor(player.position().z()))));
+        this.registerPlayerPlaceholder("%np_biome%", (player -> {
+            Vector3 vector3 = player.position();
+            return plugin.getPlatform().getBiome(player.world(), (int) Math.floor(vector3.x()), (int) Math.floor(vector3.y()), (int) Math.floor(vector3.z()));
+        }));
+        this.registerRelationalPlaceholder("%rel_np_biome%", (p1,p2) -> {
+            Vector3 vector3 = p1.position();
+            return plugin.getPlatform().getBiome(p1.world(), (int) Math.floor(vector3.x()), (int) Math.floor(vector3.y()), (int) Math.floor(vector3.z()));
+        });
         this.registerPlayerPlaceholder("%player_world%", (CNPlayer::world));
         this.registerPlayerPlaceholder("%player_remaining_air%", (player -> String.valueOf(player.remainingAir())));
         for (int i = -256; i <= 256; i++) {
             String characters = OffsetFont.createOffsets(i);
             this.registerPlayerPlaceholder("%np_offset_" + i + "%", (p) -> AdventureHelper.surroundWithNameplatesFont(characters));
         }
-        this.registerPlayerPlaceholder("%np_equipped_nameplate%", CNPlayer::equippedNameplate);
-        this.registerPlayerPlaceholder("%np_equipped_bubble%", CNPlayer::equippedBubble);
-        this.registerPlayerPlaceholder("%np_equipped_nameplate-name%", (player) -> {
-            Nameplate nameplate = plugin.getNameplateManager().nameplateById(player.equippedNameplate());
-            return Optional.ofNullable(nameplate).map(Nameplate::displayName).orElse("");
-        });
-        this.registerPlayerPlaceholder("%np_equipped_bubble-name%", (player) -> {
-            BubbleConfig bubble = plugin.getBubbleManager().bubbleConfigById(player.equippedBubble());
-            return Optional.ofNullable(bubble).map(BubbleConfig::displayName).orElse("");
-        });
+        if (ConfigManager.nameplateModule()) {
+            this.registerPlayerPlaceholder("%np_equipped_nameplate%", CNPlayer::equippedNameplate);
+            this.registerPlayerPlaceholder("%np_equipped_nameplate-name%", (player) -> {
+                Nameplate nameplate = plugin.getNameplateManager().nameplateById(player.equippedNameplate());
+                return Optional.ofNullable(nameplate).map(Nameplate::displayName).orElse("");
+            });
+        }
+        if (ConfigManager.bubbleModule()) {
+            this.registerPlayerPlaceholder("%np_equipped_bubble%", CNPlayer::equippedBubble);
+            this.registerPlayerPlaceholder("%np_equipped_bubble-name%", (player) -> {
+                BubbleConfig bubble = plugin.getBubbleManager().bubbleConfigById(player.equippedBubble());
+                return Optional.ofNullable(bubble).map(BubbleConfig::displayName).orElse("");
+            });
+        }
+
         this.registerSharedPlaceholder("%shared_np_is-latest%", () -> String.valueOf(plugin.isUpToDate()));
         this.registerPlayerPlaceholder("%np_is-latest%", (player) -> String.valueOf(plugin.isUpToDate()));
         for (int i = 1; i <= 20; i++) {

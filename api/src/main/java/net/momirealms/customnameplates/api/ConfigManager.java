@@ -60,16 +60,19 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
     protected boolean debug;
     protected boolean checkUpdate;
     protected boolean metrics;
+    protected boolean nametagModule;
     protected boolean actionbarModule;
     protected boolean imageModule;
     protected boolean bossBarModule;
     protected boolean bubbleModule;
     protected boolean nameplateModule;
     protected boolean backgroundModule;
+    protected boolean hideTeamNames;
     protected int defaultPlaceholderRefreshInterval;
     protected int defaultConditionRefreshInterval;
     protected int delaySend;
     protected boolean catchOtherActionBar;
+    protected boolean displaySystemChat;
     protected int otherActionBarStayTime;
 
     protected String namespace;
@@ -163,6 +166,7 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
         checkUpdate = config.getBoolean("update-checker", false);
 
         // Modules
+        nametagModule = config.getBoolean("modules.nametags", true);
         actionbarModule = config.getBoolean("modules.actionbars", true);
         imageModule = config.getBoolean("modules.images", true);
         bossBarModule = config.getBoolean("modules.bossbars", true);
@@ -214,6 +218,8 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
         defaultConditionRefreshInterval = config.getInt("other-settings.ddefault-condition-refresh-interval", 1);
         catchOtherActionBar = config.getBoolean("other-settings.catch-other-plugin-actionbar", true);
         otherActionBarStayTime = config.getInt("other-settings.other-actionbar-stay-time", 3000);
+        displaySystemChat = config.getBoolean("other-settings.display-system-actionbar", true);
+        hideTeamNames = config.getBoolean("other-settings.hide-team-names", true);
     }
 
     @Override
@@ -265,12 +271,24 @@ public abstract class ConfigManager implements ConfigLoader, Reloadable {
         return instance.initialChar;
     }
 
+    public static boolean hideTeamNames() {
+        return instance.hideTeamNames;
+    }
+
     public static boolean actionbarModule() {
         return instance.actionbarModule;
     }
 
+    public static boolean nametagModule() {
+        return instance.nametagModule;
+    }
+
     public static boolean catchOtherActionBar() {
         return instance.catchOtherActionBar;
+    }
+
+    public static boolean displaySystemChat() {
+        return instance.displaySystemChat;
     }
 
     public static boolean packItemsAdder() {
