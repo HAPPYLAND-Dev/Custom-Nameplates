@@ -19,6 +19,10 @@ package net.momirealms.customnameplates.backend.placeholder;
 
 import dev.dejvokep.boostedyaml.YamlDocument;
 import dev.dejvokep.boostedyaml.block.implementation.Section;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.momirealms.customnameplates.api.CNPlayer;
 import net.momirealms.customnameplates.api.ConfigManager;
 import net.momirealms.customnameplates.api.CustomNameplates;
@@ -51,7 +55,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
 
     private final CustomNameplates plugin;
     private final HashMap<String, Integer> refreshIntervals = new HashMap<>();
-    private final HashMap<Integer, Integer> fasterRefreshIntervals = new HashMap<>();
+    private final Int2IntOpenHashMap fasterRefreshIntervals = new Int2IntOpenHashMap();
     private final Map<String, Placeholder> registeredPlaceholders = new HashMap<>();
     private final HashMap<Placeholder, List<PreParsedDynamicText>> childrenText = new HashMap<>();
     private final HashMap<String, Placeholder> nestedPlaceholders = new HashMap<>();
@@ -110,10 +114,18 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
     }
 
     private void loadNestNameplatePlaceholders() {
-        if (!ConfigManager.nameplateModule()) return;
+        if (!ConfigManager.nameplateModule()) {
+            this.registerPlayerPlaceholder("%np_tag-image%", (player -> "Please remove %np_tag-image% if you have disabled nameplates module"));
+            this.registerPlayerPlaceholder("%rel_np_tag-image%", (player -> "Please remove %rel_np_tag-image% if you have disabled nameplates module"));
+            this.registerPlayerPlaceholder("%np_tag-text%", (player -> "Please remove %np_tag-text% if you have disabled nameplates module"));
+            this.registerPlayerPlaceholder("%rel_np_tag-text%", (player -> "Please remove %rel_np_tag-text% if you have disabled nameplates module"));
+            this.registerPlayerPlaceholder("%np_tag%", (player -> "Please remove %np_tag% if you have disabled nameplates module"));
+            this.registerPlayerPlaceholder("%rel_np_tag%", (player -> "Please remove %rel_np_tag% if you have disabled nameplates module"));
+            return;
+        }
         PreParsedDynamicText nameTag = new PreParsedDynamicText(plugin.getNameplateManager().playerNameTag());
         Placeholder placeholder1 = this.registerPlayerPlaceholder("%np_tag-image%", (player -> {
-            String equippedNameplate = player.equippedNameplate();
+            String equippedNameplate = player.currentNameplate();
             if (equippedNameplate.equals("none")) equippedNameplate = plugin.getNameplateManager().defaultNameplateId();
             Nameplate nameplate = plugin.getNameplateManager().nameplateById(equippedNameplate);
             if (nameplate == null) return "";
@@ -122,7 +134,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
             return AdventureHelper.surroundWithNameplatesFont(nameplate.createImage(advance, 0, 0));
         }));
         Placeholder placeholder2 = this.registerRelationalPlaceholder("%rel_np_tag-image%", (p1, p2) -> {
-            String equippedNameplate = p1.equippedNameplate();
+            String equippedNameplate = p1.currentNameplate();
             if (equippedNameplate.equals("none")) equippedNameplate = plugin.getNameplateManager().defaultNameplateId();
             Nameplate nameplate = plugin.getNameplateManager().nameplateById(equippedNameplate);
             if (nameplate == null) return "";
@@ -133,7 +145,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
         Placeholder placeholder3 = this.registerPlayerPlaceholder("%np_tag-text%", (player -> nameTag.fastCreate(player).render(player)));
         Placeholder placeholder4 = this.registerRelationalPlaceholder("%rel_np_tag-text%", (p1, p2) -> nameTag.fastCreate(p1).render(p2));
         Placeholder placeholder5 = this.registerPlayerPlaceholder("%np_tag%", (player -> {
-            String equippedNameplate = player.equippedNameplate();
+            String equippedNameplate = player.currentNameplate();
             if (equippedNameplate.equals("none")) equippedNameplate = plugin.getNameplateManager().defaultNameplateId();
             Nameplate nameplate = plugin.getNameplateManager().nameplateById(equippedNameplate);
             String tag = nameTag.fastCreate(player).render(player);
@@ -143,7 +155,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
                     + tag + AdventureHelper.surroundWithNameplatesFont(nameplate.createImageSuffix(advance, 0, 0));
         }));
         Placeholder placeholder6 = this.registerRelationalPlaceholder("%rel_np_tag%", (p1, p2) -> {
-            String equippedNameplate = p1.equippedNameplate();
+            String equippedNameplate = p1.currentNameplate();
             Nameplate nameplate = plugin.getNameplateManager().nameplateById(equippedNameplate);
             if (nameplate == null) return p1.name();
             String tag = nameTag.fastCreate(p1).render(p2);
@@ -180,16 +192,16 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
             this.registerPlayerPlaceholder("%np_offset_" + i + "%", (p) -> AdventureHelper.surroundWithNameplatesFont(characters));
         }
         if (ConfigManager.nameplateModule()) {
-            this.registerPlayerPlaceholder("%np_equipped_nameplate%", CNPlayer::equippedNameplate);
+            this.registerPlayerPlaceholder("%np_equipped_nameplate%", CNPlayer::currentNameplate);
             this.registerPlayerPlaceholder("%np_equipped_nameplate-name%", (player) -> {
-                Nameplate nameplate = plugin.getNameplateManager().nameplateById(player.equippedNameplate());
+                Nameplate nameplate = plugin.getNameplateManager().nameplateById(player.currentNameplate());
                 return Optional.ofNullable(nameplate).map(Nameplate::displayName).orElse("");
             });
         }
         if (ConfigManager.bubbleModule()) {
-            this.registerPlayerPlaceholder("%np_equipped_bubble%", CNPlayer::equippedBubble);
+            this.registerPlayerPlaceholder("%np_equipped_bubble%", CNPlayer::currentBubble);
             this.registerPlayerPlaceholder("%np_equipped_bubble-name%", (player) -> {
-                BubbleConfig bubble = plugin.getBubbleManager().bubbleConfigById(player.equippedBubble());
+                BubbleConfig bubble = plugin.getBubbleManager().bubbleConfigById(player.currentBubble());
                 return Optional.ofNullable(bubble).map(BubbleConfig::displayName).orElse("");
             });
         }
@@ -201,7 +213,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
             this.registerPlayerPlaceholder("%np_gradient_" + i + "%", (player) -> {
                 int currentTicks = MainTask.getTicks();
                 double progress = currentTicks * 0.01 * speed;
-                return String.format("%.2f", -1 + (progress % 2.0001));
+                return String.format(Locale.US, "%.2f", -1 + (progress % 2.0001));
             });
         }
         for (int i = 1; i <= 20; i++) {
@@ -209,9 +221,11 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
             this.registerSharedPlaceholder("%shared_np_gradient_" + i + "%", () -> {
                 int currentTicks = MainTask.getTicks();
                 double progress = currentTicks * 0.01 * speed;
-                return String.format("%.2f", -1 + (progress % 2.0001));
+                return String.format(Locale.US, "%.2f", -1 + (progress % 2.0001));
             });
         }
+        this.registerPlayerPlaceholder("%np_is_showing%", (player) -> String.valueOf(player.isToggleablePreviewing()));
+        this.registerPlayerPlaceholder("%np_is_previewing%", (player) -> String.valueOf(player.isTempPreviewing()));
         this.registerPlayerPlaceholder("%np_time%", (player) -> {
             long time = player.playerTime() % 24_000;
             String ap = time >= 6000 && time < 18000 ? " PM" : " AM";
@@ -498,6 +512,9 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
                     Placeholder placeholder7 = this.registerSharedPlaceholder("%shared_np_background-image_" + id + "%", () -> adaptiveImageText.getImage(null, null));
                     Placeholder placeholder8 = this.registerPlayerPlaceholder("%np_background-image_" + id + "%", (p) -> adaptiveImageText.getImage(p, p));
                     Placeholder placeholder9 = this.registerRelationalPlaceholder("%rel_np_background-image_" + id + "%", adaptiveImageText::getImage);
+                    Placeholder placeholder40 = this.registerSharedPlaceholder("%shared_np_background-text-offset_" + id + "%", () -> adaptiveImageText.getTextOffsetCharacters(null, null));
+                    Placeholder placeholder50 = this.registerPlayerPlaceholder("%np_background-text-offset_" + id + "%", (p) -> adaptiveImageText.getTextOffsetCharacters(p, p));
+                    Placeholder placeholder60 = this.registerRelationalPlaceholder("%rel_np_background-text-offset_" + id + "%", adaptiveImageText::getTextOffsetCharacters);
                     childrenText.put(placeholder1, list);
                     childrenText.put(placeholder2, list);
                     childrenText.put(placeholder3, list);
@@ -507,6 +524,9 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
                     childrenText.put(placeholder7, list);
                     childrenText.put(placeholder8, list);
                     childrenText.put(placeholder9, list);
+                    childrenText.put(placeholder40, list);
+                    childrenText.put(placeholder50, list);
+                    childrenText.put(placeholder60, list);
                 } else {
                     plugin.getPluginLogger().warn("Background [" + bgID + "] not exists");
                 }
@@ -573,15 +593,15 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
     public void refreshPlaceholders() {
         for (CNPlayer player : plugin.getOnlinePlayers()) {
             if (!player.isOnline()) continue;
-            Set<Feature> featuresToNotifyUpdates = new HashSet<>();
-            Map<Feature, List<CNPlayer>> relationalFeaturesToNotifyUpdates = new HashMap<>();
-            List<RelationalPlaceholder> delayedPlaceholdersToUpdate = new ArrayList<>();
+            Set<Feature> featuresToNotifyUpdates = new ObjectOpenHashSet<>();
+            Map<Feature, List<CNPlayer>> relationalFeaturesToNotifyUpdates = new Object2ObjectOpenHashMap<>();
+            List<RelationalPlaceholder> delayedPlaceholdersToUpdate = new ObjectArrayList<>();
             for (Placeholder placeholder : player.activePlaceholdersToRefresh()) {
                 if (placeholder instanceof PlayerPlaceholder playerPlaceholder) {
-                    TimeStampData<String> previous = player.getValue(placeholder);
+                    TimeStampData<String> previous = player.getRawPlayerValue(playerPlaceholder);
                     if (previous == null) {
                         String value = playerPlaceholder.request(player);
-                        player.setValue(placeholder, new TimeStampData<>(value, MainTask.getTicks(), true));
+                        player.setPlayerValue(playerPlaceholder, new TimeStampData<>(value, MainTask.getTicks(), true));
                         featuresToNotifyUpdates.addAll(player.activeFeatures(placeholder));
                     } else {
                         if (previous.ticks() > MainTask.getTicks() - getRefreshInterval(placeholder.countId())) {
@@ -603,7 +623,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
                 } else if (placeholder instanceof RelationalPlaceholder relationalPlaceholder) {
                     delayedPlaceholdersToUpdate.add(relationalPlaceholder);
                 } else if (placeholder instanceof SharedPlaceholder sharedPlaceholder) {
-                    TimeStampData<String> previous = player.getValue(placeholder);
+                    TimeStampData<String> previous = player.getRawSharedValue(sharedPlaceholder);
                     if (previous == null) {
                         String value;
                         // if the shared placeholder has been updated by other players
@@ -612,7 +632,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
                         } else {
                             value = sharedPlaceholder.request();
                         }
-                        player.setValue(placeholder, new TimeStampData<>(value, MainTask.getTicks(), true));
+                        player.setSharedValue(sharedPlaceholder, new TimeStampData<>(value, MainTask.getTicks(), true));
                         featuresToNotifyUpdates.addAll(player.activeFeatures(placeholder));
                     } else {
                         // The placeholder has been refreshed by other codes
@@ -643,14 +663,14 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
 
             for (RelationalPlaceholder placeholder : delayedPlaceholdersToUpdate) {
                 for (CNPlayer nearby : player.nearbyPlayers()) {
-                    TimeStampData<String> previous = player.getRelationalValue(placeholder, nearby);
+                    TimeStampData<String> previous = player.getRawRelationalValue(placeholder, nearby);
                     if (previous == null) {
                         String value = placeholder.request(player, nearby);
                         player.setRelationalValue(placeholder, nearby, new TimeStampData<>(value, MainTask.getTicks(), true));
                         for (Feature feature : player.activeFeatures(placeholder)) {
                             // Filter features that will not be updated for all players
                             if (!featuresToNotifyUpdates.contains(feature)) {
-                                List<CNPlayer> players = relationalFeaturesToNotifyUpdates.computeIfAbsent(feature, k -> new ArrayList<>());
+                                List<CNPlayer> players = relationalFeaturesToNotifyUpdates.computeIfAbsent(feature, k -> new ObjectArrayList<>());
                                 players.add(nearby);
                             }
                         }
@@ -661,7 +681,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
                                 for (Feature feature : player.activeFeatures(placeholder)) {
                                     // Filter features that will not be updated for all players
                                     if (!featuresToNotifyUpdates.contains(feature)) {
-                                        List<CNPlayer> players = relationalFeaturesToNotifyUpdates.computeIfAbsent(feature, k -> new ArrayList<>());
+                                        List<CNPlayer> players = relationalFeaturesToNotifyUpdates.computeIfAbsent(feature, k -> new ObjectArrayList<>());
                                         players.add(nearby);
                                     }
                                 }
@@ -675,7 +695,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
                             for (Feature feature : player.activeFeatures(placeholder)) {
                                 // Filter features that will not be updated for all players
                                 if (!featuresToNotifyUpdates.contains(feature)) {
-                                    List<CNPlayer> players = relationalFeaturesToNotifyUpdates.computeIfAbsent(feature, k -> new ArrayList<>());
+                                    List<CNPlayer> players = relationalFeaturesToNotifyUpdates.computeIfAbsent(feature, k -> new ObjectArrayList<>());
                                     players.add(nearby);
                                 }
                             }
@@ -771,7 +791,7 @@ public class PlaceholderManagerImpl implements PlaceholderManager {
         if (firstPercent == 0 && text.charAt(text.length() - 1) == '%' && text.indexOf('%', 1) == text.length() - 1) {
             return Collections.singletonList(text);
         }
-        List<String> placeholders = new ArrayList<>();
+        List<String> placeholders = new ObjectArrayList<>();
         Matcher m = PATTERN.matcher(text);
         while (m.find()) {
             placeholders.add(m.group());

@@ -30,14 +30,16 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * CustomNameplatesAPI
+ */
 public record CustomNameplatesAPI(CustomNameplates plugin) {
-
-    private static CustomNameplatesAPI instance;
-
     public CustomNameplatesAPI(CustomNameplates plugin) {
         this.plugin = plugin;
         instance = this;
     }
+
+    private static CustomNameplatesAPI instance;
 
     /**
      * Gets the CustomNameplates plugin instance.

@@ -17,29 +17,56 @@
 
 package net.momirealms.customnameplates.api.feature;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.momirealms.customnameplates.api.CNPlayer;
 import net.momirealms.customnameplates.api.CustomNameplates;
 import net.momirealms.customnameplates.api.placeholder.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 
+/**
+ * Represents a dynamically parsed text that can contain placeholders.
+ * The text is parsed at initialization and placeholders are replaced with corresponding values.
+ * This class provides functionality to manage placeholders and generate dynamic text for players.
+ */
 public class PreParsedDynamicText {
-
     private final String text;
-    private final List<Function<CNPlayer, Function<CNPlayer, String>>> textFunctions = new ArrayList<>();
-    private final Set<Placeholder> set = new HashSet<>();
+    private final List<Function<CNPlayer, Function<CNPlayer, String>>> textFunctions = new ObjectArrayList<>();
+    private final Set<Placeholder> set = new ObjectOpenHashSet<>();
     private boolean init = false;
 
+    /**
+     * Constructs a PreParsedDynamicText with the given text.
+     *
+     * @param text the original text containing placeholders to be parsed
+     * @throws NullPointerException if the provided text is null
+     */
     public PreParsedDynamicText(String text) {
         this.text = Objects.requireNonNull(text);
     }
 
+    /**
+     * Constructs a PreParsedDynamicText with the given text and initializes it (parses placeholders).
+     *
+     * @param text the original text containing placeholders to be parsed
+     * @param init flag indicating whether to initialize the text immediately
+     * @throws NullPointerException if the provided text is null
+     */
     public PreParsedDynamicText(String text, boolean init) {
         this.text = Objects.requireNonNull(text);
         if (init) init();
     }
 
+    /**
+     * Initializes the PreParsedDynamicText by parsing the text for placeholders and creating
+     * corresponding functions for replacing the placeholders with values.
+     * This method is called automatically if the constructor is provided with `true` for the init flag.
+     */
     public void init() {
         if (init) return;
         init = true;
@@ -50,18 +77,24 @@ public class PreParsedDynamicText {
         for (String id : detectedPlaceholders) {
             Placeholder placeholder = manager.getPlaceholder(id);
             placeholders.add(placeholder);
-            if (placeholder instanceof RelationalPlaceholder) {
-                convertor.add((owner) -> (viewer) -> owner.getRelationalData(placeholder, viewer));
+            if (placeholder instanceof RelationalPlaceholder relationalPlaceholder) {
+                convertor.add((owner) -> (viewer) -> owner.getCachedRelationalValue(relationalPlaceholder, viewer));
             } else if (placeholder instanceof PlayerPlaceholder playerPlaceholder) {
                 convertor.add((owner) -> (viewer) -> {
                     if (owner != null) {
-                        return owner.getData(placeholder);
+                        return owner.getCachedPlayerValue(playerPlaceholder);
                     } else {
                         return playerPlaceholder.request(null);
                     }
                 });
             } else if (placeholder instanceof SharedPlaceholder sharedPlaceholder) {
-                convertor.add((owner) -> (viewer) -> sharedPlaceholder.getLatestValue());
+                convertor.add((owner) -> (viewer) -> {
+                    if (owner != null) {
+                        return owner.getCachedSharedValue(sharedPlaceholder);
+                    } else {
+                        return sharedPlaceholder.request();
+                    }
+                });
             } else {
                 convertor.add((owner) -> (viewer) -> id);
             }
@@ -86,18 +119,30 @@ public class PreParsedDynamicText {
             String remaining = original0.substring(lastIndex);
             textFunctions.add((owner) -> (viewer) -> remaining);
         }
-        // To optimize the tree height, call new HashSet twice here
-        set.addAll(new HashSet<>(placeholders));
+        // To optimize the tree height
+        set.addAll(new ObjectArrayList<>(placeholders));
     }
 
+    /**
+     * Creates a dynamic text based on the current pre-parsed text, tailored to the given player.
+     * This method uses the player's data to generate the final text.
+     *
+     * @param player the player for whom the dynamic text is being generated
+     * @return a DynamicText object containing the final text for the player
+     */
     public DynamicText fastCreate(CNPlayer player) {
-        List<Function<CNPlayer, String>> functions = new ArrayList<>();
+        List<Function<CNPlayer, String>> functions = new ObjectArrayList<>();
         for (Function<CNPlayer, Function<CNPlayer, String>> textFunction : textFunctions) {
             functions.add(textFunction.apply(player));
         }
         return new DynamicText(text, functions, set);
     }
 
+    /**
+     * Returns a set of placeholders detected in the text.
+     *
+     * @return a set of placeholders used in the text
+     */
     public Set<Placeholder> placeholders() {
         return set;
     }

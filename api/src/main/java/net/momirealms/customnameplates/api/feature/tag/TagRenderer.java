@@ -19,6 +19,9 @@ package net.momirealms.customnameplates.api.feature.tag;
 
 import java.util.function.Predicate;
 
+/**
+ * An interface to control the rendering of tags
+ */
 public interface TagRenderer {
 
     /**
@@ -34,6 +37,13 @@ public interface TagRenderer {
      * @param hatOffset the new hat offset value
      */
     void hatOffset(double hatOffset);
+
+    /**
+     * Checks if the tag is valid
+     *
+     * @return valid or not
+     */
+    boolean isValid();
 
     /**
      * Called every tick to update the state of the tags managed by this renderer.

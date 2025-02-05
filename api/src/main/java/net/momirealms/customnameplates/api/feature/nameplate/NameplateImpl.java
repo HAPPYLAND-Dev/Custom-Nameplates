@@ -22,17 +22,21 @@ import net.momirealms.customnameplates.api.feature.OffsetFont;
 
 import java.util.Objects;
 
+/**
+ * Implementation of Nameplate
+ */
 public class NameplateImpl implements Nameplate {
-
     private final String id;
     private final String displayName;
     private final ConfiguredCharacter left;
     private final ConfiguredCharacter middle;
     private final ConfiguredCharacter right;
+    private final int minWidth;
 
-    public NameplateImpl(String id, String displayName, ConfiguredCharacter left, ConfiguredCharacter middle, ConfiguredCharacter right) {
+    private NameplateImpl(String id, String displayName, int minWidth, ConfiguredCharacter left, ConfiguredCharacter middle, ConfiguredCharacter right) {
         this.id = id;
         this.displayName = displayName;
+        this.minWidth = minWidth;
         this.left = left;
         this.middle = middle;
         this.right = right;
@@ -64,6 +68,11 @@ public class NameplateImpl implements Nameplate {
     }
 
     @Override
+    public int minWidth() {
+        return minWidth;
+    }
+
+    @Override
     public boolean equals(Object object) {
         if (this == object) return true;
         if (object == null || getClass() != object.getClass()) return false;
@@ -80,6 +89,7 @@ public class NameplateImpl implements Nameplate {
     @Override
     public String createImagePrefix(float advance, float leftMargin, float rightMargin) {
         if (advance <= 0) return "";
+        advance = Math.max(minWidth, advance);
         StringBuilder sb = new StringBuilder();
         sb.append(left.character());
         sb.append(OffsetFont.NEG_1.character());
@@ -99,6 +109,7 @@ public class NameplateImpl implements Nameplate {
     @Override
     public String createImageSuffix(float advance, float leftMargin, float rightMargin) {
         if (advance <= 0) return "";
+        advance = Math.max(minWidth, advance);
         int mid_amount = (int) Math.ceil((advance + leftMargin + rightMargin) / (middle.advance() - 1));
         float exceed = mid_amount * (middle.advance() - 1) - advance - leftMargin - rightMargin;
         return OffsetFont.shortestPosChars((float) Math.ceil(exceed / 2) + rightMargin + right.advance());
@@ -108,6 +119,7 @@ public class NameplateImpl implements Nameplate {
     @Override
     public String createImage(float advance, float leftMargin, float rightMargin) {
         if (advance <= 0) return "";
+        advance = Math.max(minWidth, advance);
         StringBuilder sb = new StringBuilder();
         sb.append(left.character());
         sb.append(OffsetFont.NEG_1.character());
@@ -124,13 +136,16 @@ public class NameplateImpl implements Nameplate {
         return sb.toString();
     }
 
+    /**
+     * The builder implementation
+     */
     public static class BuilderImpl implements Builder {
-
         private String id;
         private String displayName;
         private ConfiguredCharacter left;
         private ConfiguredCharacter middle;
         private ConfiguredCharacter right;
+        private int minWidth;
 
         @Override
         public Builder id(String id) {
@@ -141,6 +156,12 @@ public class NameplateImpl implements Nameplate {
         @Override
         public Builder displayName(String displayName) {
             this.displayName = displayName;
+            return this;
+        }
+
+        @Override
+        public Builder minWidth(int minWidth) {
+            this.minWidth = minWidth;
             return this;
         }
 
@@ -164,7 +185,7 @@ public class NameplateImpl implements Nameplate {
 
         @Override
         public Nameplate build() {
-            return new NameplateImpl(id, displayName, left, middle, right);
+            return new NameplateImpl(id, displayName, minWidth, left, middle, right);
         }
     }
 }

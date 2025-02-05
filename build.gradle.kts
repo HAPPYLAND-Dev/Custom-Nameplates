@@ -3,6 +3,7 @@ import java.io.ByteArrayOutputStream
 
 plugins {
     id("java")
+    id("com.gradleup.shadow") version "9.0.0-beta6"
 }
 
 val git : String = versionBanner()
@@ -11,9 +12,8 @@ ext["git_version"] = git
 ext["builder"] = builder
 
 subprojects {
-
     apply(plugin = "java")
-    apply(plugin = "java-library")
+    apply(plugin = "com.gradleup.shadow")
 
     repositories {
         mavenCentral()
@@ -26,7 +26,7 @@ subprojects {
             expand(rootProject.properties)
         }
 
-        filesMatching(arrayListOf("*.yml", "*/*.yml")) {
+        filesMatching(arrayListOf("*.yml", "*/*.yml", "META-INF/sponge_plugins.json")) {
             expand(
                 Pair("project_version", rootProject.properties["project_version"]),
                 Pair("config_version", rootProject.properties["config_version"])

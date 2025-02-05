@@ -18,21 +18,24 @@
 package net.momirealms.customnameplates.api.feature.image;
 
 import net.momirealms.customnameplates.api.feature.ConfiguredCharacter;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
+/**
+ * Implementation of Image
+ */
 public class ImageImpl implements Image {
-
     private final String id;
-    private final boolean hasShadow;
-    private final int opacity;
+    private final boolean removeShadow;
     private final ConfiguredCharacter character;
+    private final Animation animation;
 
-    public ImageImpl(String id, boolean hasShadow, int opacity, ConfiguredCharacter character) {
+    private ImageImpl(String id, boolean removeShadow, Animation animation, ConfiguredCharacter character) {
         this.id = id;
-        this.hasShadow = hasShadow;
-        this.opacity = opacity;
+        this.removeShadow = removeShadow;
         this.character = character;
+        this.animation = animation;
     }
 
     @Override
@@ -41,13 +44,13 @@ public class ImageImpl implements Image {
     }
 
     @Override
-    public boolean hasShadow() {
-        return hasShadow;
+    public boolean removeShadow() {
+        return removeShadow;
     }
 
     @Override
-    public int opacity() {
-        return opacity;
+    public @Nullable Animation animation() {
+        return animation;
     }
 
     @Override
@@ -68,12 +71,14 @@ public class ImageImpl implements Image {
         return Objects.hashCode(id);
     }
 
+    /**
+     * The builder Implementation
+     */
     public static class BuilderImpl implements Builder {
-
         private String id;
-        private boolean hasShadow;
-        private int opacity;
+        private boolean removeShadow;
         private ConfiguredCharacter character;
+        private Animation animation;
 
         @Override
         public Builder id(String id) {
@@ -82,14 +87,14 @@ public class ImageImpl implements Image {
         }
 
         @Override
-        public Builder hasShadow(boolean has) {
-            this.hasShadow = has;
+        public Builder removeShadow(boolean removeShadow) {
+            this.removeShadow = removeShadow;
             return this;
         }
 
         @Override
-        public Builder opacity(int opacity) {
-            this.opacity = opacity;
+        public Builder animation(@Nullable Animation animation) {
+            this.animation = animation;
             return this;
         }
 
@@ -101,7 +106,7 @@ public class ImageImpl implements Image {
 
         @Override
         public Image build() {
-            return new ImageImpl(id, hasShadow, opacity, character);
+            return new ImageImpl(id, removeShadow, animation, character);
         }
     }
 }

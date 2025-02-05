@@ -1,9 +1,8 @@
-plugins {
-    id("io.github.goooler.shadow") version "8.1.8"
+repositories {
+    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
 }
 
 dependencies {
-    compileOnly(project(":common"))
     compileOnly(project(":api"))
     // YAML
     compileOnly("dev.dejvokep:boosted-yaml:${rootProject.properties["boosted_yaml_version"]}")
@@ -26,4 +25,12 @@ dependencies {
     // TTF
     compileOnly("org.lwjgl:lwjgl-freetype:${rootProject.properties["lwjgl_version"]}")
     compileOnly("org.lwjgl:lwjgl:${rootProject.properties["lwjgl_version"]}")
+    // Fast util
+    compileOnly("it.unimi.dsi:fastutil:${rootProject.properties["fastutil_version"]}")
+}
+
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+    options.release.set(17)
+    dependsOn(tasks.clean)
 }

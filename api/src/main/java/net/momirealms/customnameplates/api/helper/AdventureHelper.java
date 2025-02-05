@@ -35,10 +35,14 @@ import java.util.concurrent.TimeUnit;
  */
 public class AdventureHelper {
 
+    /**
+     * Whether to enable legacy color code support
+     */
+    public static boolean legacySupport = false;
+
     private final MiniMessage miniMessage;
     private final MiniMessage miniMessageStrict;
     private final GsonComponentSerializer gsonComponentSerializer;
-    public static boolean legacySupport = false;
 
     private final Cache<String, Component> miniMessageToComponentCache;
     private final Cache<String, Object> miniMessageToMinecraftComponentCache;
@@ -84,6 +88,9 @@ public class AdventureHelper {
                         .build();
     }
 
+    /**
+     * Clear cache
+     */
     public static void clearCache() {
         AdventureHelper instance = getInstance();
         instance.miniMessageToMinecraftComponentCache.cleanUp();
@@ -217,6 +224,12 @@ public class AdventureHelper {
         return "<#FFFEFD>" + text + "</#FFFEFD>";
     }
 
+    /**
+     * Removes shadow from the provided text using a specific color code.
+     *
+     * @param text the text to modify
+     * @return the text wrapped in a color tag to remove shadows
+     */
     public static String removeShadow(String text) {
         return "<#F0F0F0>" + text + "</#F0F0F0>";
     }
@@ -299,7 +312,7 @@ public class AdventureHelper {
                 case 'd' -> stringBuilder.append("<light_purple>");
                 case 'e' -> stringBuilder.append("<yellow>");
                 case 'f' -> stringBuilder.append("<white>");
-                case 'r' -> stringBuilder.append("<r><!i>");
+                case 'r' -> stringBuilder.append("<reset>");
                 case 'l' -> stringBuilder.append("<b>");
                 case 'm' -> stringBuilder.append("<st>");
                 case 'o' -> stringBuilder.append("<i>");

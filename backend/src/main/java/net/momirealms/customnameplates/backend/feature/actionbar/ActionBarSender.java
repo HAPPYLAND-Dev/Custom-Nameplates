@@ -17,6 +17,7 @@
 
 package net.momirealms.customnameplates.backend.feature.actionbar;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.momirealms.customnameplates.api.CNPlayer;
 import net.momirealms.customnameplates.api.ConfigManager;
 import net.momirealms.customnameplates.api.CustomNameplates;
@@ -31,7 +32,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
@@ -80,7 +80,7 @@ public class ActionBarSender implements Feature {
         this.onConditionTimerCheck();
     }
 
-    public void onConditionTimerCheck() {
+    public synchronized void onConditionTimerCheck() {
         ActionBarConfig[] configs = manager.actionBarConfigs();
         outer: {
             for (ActionBarConfig config : configs) {
@@ -160,7 +160,9 @@ public class ActionBarSender implements Feature {
         if (isTemporarilyHidden()) return;
         if (latestContent != null) {
             updateLastUpdateTime();
-            Object packet = CustomNameplates.getInstance().getPlatform().setActionBarTextPacket(AdventureHelper.miniMessageToMinecraftComponent(latestContent, "np", "ab"));
+            // do not send if other plugins have taken over the actionbar
+            if (!owner.shouldCNTakeOverActionBar()) return;
+            Object packet = CustomNameplates.getInstance().getPlatform().setActionBarTextPacket(AdventureHelper.miniMessageToMinecraftComponent(latestContent, "nameplates", "actionbar"));
             CustomNameplates.getInstance().getPacketSender().sendPacket(owner, packet);
         }
     }
@@ -177,7 +179,7 @@ public class ActionBarSender implements Feature {
 
     @Override
     public Set<Placeholder> allPlaceholders() {
-        HashSet<Placeholder> placeholders = new HashSet<>();
+        Set<Placeholder> placeholders = new ObjectOpenHashSet<>();
         for (ActionBarConfig config : manager.actionBarConfigs()) {
             for (CarouselText text : config.carouselTexts()) {
                 placeholders.addAll(text.preParsedDynamicText().placeholders());

@@ -20,17 +20,25 @@ package net.momirealms.customnameplates.api;
 import io.netty.channel.Channel;
 import net.momirealms.customnameplates.api.feature.Feature;
 import net.momirealms.customnameplates.api.feature.TimeStampData;
+import net.momirealms.customnameplates.api.feature.tag.TeamView;
 import net.momirealms.customnameplates.api.network.Tracker;
 import net.momirealms.customnameplates.api.placeholder.Placeholder;
+import net.momirealms.customnameplates.api.placeholder.PlayerPlaceholder;
+import net.momirealms.customnameplates.api.placeholder.RelationalPlaceholder;
+import net.momirealms.customnameplates.api.placeholder.SharedPlaceholder;
 import net.momirealms.customnameplates.api.requirement.Requirement;
 import net.momirealms.customnameplates.api.util.Vector3;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * CustomNameplates Player
+ */
 public interface CNPlayer {
 
     /**
@@ -177,6 +185,27 @@ public interface CNPlayer {
     Placeholder[] activePlaceholders();
 
     /**
+     * Acquires the actionbar, preventing CustomNameplates from taking control of it.
+     *
+     * @param id The feature ID requesting the actionbar.
+     */
+    void acquireActionBar(String id);
+
+    /**
+     * Releases the actionbar, allowing CustomNameplates to take control again if no other features are active.
+     *
+     * @param id The feature ID releasing the actionbar.
+     */
+    void releaseActionBar(String id);
+
+    /**
+     * Checks if CustomNameplates should take control of the actionbar.
+     *
+     * @return True if CustomNameplates should take over the actionbar, false otherwise.
+     */
+    boolean shouldCNTakeOverActionBar();
+
+    /**
      * Retrieves the list of placeholders that need to be refreshed based on their refresh intervals.
      *
      * @return a list of placeholders to refresh
@@ -189,7 +218,7 @@ public interface CNPlayer {
      * @param placeholders the placeholders to update
      * @param another      the players related to the placeholders
      */
-    void forceUpdatePlaceholders(Set<Placeholder> placeholders, Set<CNPlayer> another);
+    void forceUpdatePlaceholders(Set<Placeholder> placeholders, Collection<CNPlayer> another);
 
     /**
      * Retrieves the cached data for a given placeholder.
@@ -198,16 +227,16 @@ public interface CNPlayer {
      * @return the cached data as a string
      */
     @NotNull
-    String getData(Placeholder placeholder);
+    String getCachedSharedValue(SharedPlaceholder placeholder);
 
     /**
-     * Retrieves the cached {@link TimeStampData} for a given placeholder.
+     * Retrieves the cached data for a given placeholder.
      *
      * @param placeholder the placeholder to retrieve data for
-     * @return the cached TickStampData, or null if none exists
+     * @return the cached data as a string
      */
-    @Nullable
-    TimeStampData<String> getValue(Placeholder placeholder);
+    @NotNull
+    String getCachedPlayerValue(PlayerPlaceholder placeholder);
 
     /**
      * Retrieves the cached relational data between this player and another for a given placeholder.
@@ -217,7 +246,25 @@ public interface CNPlayer {
      * @return the relational data as a string
      */
     @NotNull
-    String getRelationalData(Placeholder placeholder, CNPlayer another);
+    String getCachedRelationalValue(RelationalPlaceholder placeholder, CNPlayer another);
+
+    /**
+     * Retrieves the cached {@link TimeStampData} for a given placeholder.
+     *
+     * @param placeholder the placeholder to retrieve data for
+     * @return the cached TickStampData, or null if none exists
+     */
+    @Nullable
+    TimeStampData<String> getRawPlayerValue(PlayerPlaceholder placeholder);
+
+    /**
+     * Retrieves the cached {@link TimeStampData} for a given placeholder.
+     *
+     * @param placeholder the placeholder to retrieve data for
+     * @return the cached TickStampData, or null if none exists
+     */
+    @Nullable
+    TimeStampData<String> getRawSharedValue(SharedPlaceholder placeholder);
 
     /**
      * Retrieves the cached relational {@link TimeStampData} for a given placeholder.
@@ -227,7 +274,7 @@ public interface CNPlayer {
      * @return the cached relational TickStampData, or null if none exists
      */
     @Nullable
-    TimeStampData<String> getRelationalValue(Placeholder placeholder, CNPlayer another);
+    TimeStampData<String> getRawRelationalValue(RelationalPlaceholder placeholder, CNPlayer another);
 
     /**
      * Caches the specified {@link TimeStampData} for the given placeholder.
@@ -235,16 +282,15 @@ public interface CNPlayer {
      * @param placeholder the placeholder to cache
      * @param value       the value to cache
      */
-    void setValue(Placeholder placeholder, TimeStampData<String> value);
+    void setPlayerValue(PlayerPlaceholder placeholder, TimeStampData<String> value);
 
     /**
-     * Caches the specified value for the given placeholder.
+     * Caches the specified {@link TimeStampData} for the given placeholder.
      *
      * @param placeholder the placeholder to cache
      * @param value       the value to cache
-     * @return true if the value was changed, false otherwise
      */
-    boolean setValue(Placeholder placeholder, String value);
+    void setSharedValue(SharedPlaceholder placeholder, TimeStampData<String> value);
 
     /**
      * Caches the specified relational {@link TimeStampData} for a given placeholder and player.
@@ -253,17 +299,26 @@ public interface CNPlayer {
      * @param another     the other player
      * @param value       the value to cache
      */
-    void setRelationalValue(Placeholder placeholder, CNPlayer another, TimeStampData<String> value);
+    void setRelationalValue(RelationalPlaceholder placeholder, CNPlayer another, TimeStampData<String> value);
 
-    /**
-     * Caches the specified relational value for a given placeholder and player.
-     *
-     * @param placeholder the relational placeholder
-     * @param another     the other player
-     * @param value       the value to cache
-     * @return true if the value was changed, false otherwise
-     */
-    boolean setRelationalValue(Placeholder placeholder, CNPlayer another, String value);
+//    /**
+//     * Caches the specified value for the given placeholder.
+//     *
+//     * @param placeholder the placeholder to cache
+//     * @param value       the value to cache
+//     * @return true if the value was changed, false otherwise
+//     */
+//    boolean setPlayerValue(PlayerPlaceholder placeholder, String value);
+
+//    /**
+//     * Caches the specified relational value for a given placeholder and player.
+//     *
+//     * @param placeholder the relational placeholder
+//     * @param another     the other player
+//     * @param value       the value to cache
+//     * @return true if the value was changed, false otherwise
+//     */
+//    boolean setRelationalValue(RelationalPlaceholder placeholder, CNPlayer another, String value);
 
     /**
      * Adds a feature to the player
@@ -316,7 +371,7 @@ public interface CNPlayer {
      *
      * @return the set of nearby players
      */
-    Set<CNPlayer> nearbyPlayers();
+    Collection<CNPlayer> nearbyPlayers();
 
     /**
      * Adds passenger entities to the tracker for another player.
@@ -358,39 +413,81 @@ public interface CNPlayer {
     Tracker getTracker(CNPlayer another);
 
     /**
-     * Returns the ID of the currently equipped bubble for the player.
+     * Gets the bubble currently in use (Includes temp bubble used in preview)
      *
-     * @return the ID of the equipped bubble
+     * @return bubble
      */
-    String equippedBubble();
+    String currentBubble();
 
     /**
-     * Sets the equipped bubble for the player.
-     * Operation would fail if player is not loaded.
+     * Sets the bubble currently in use, which would not be saved
      *
-     * @param equippedBubble the new bubble ID to equip
-     * @return success or not
+     * @param bubble id
+     * @return false if data not loaded
      */
-    boolean equippedBubble(String equippedBubble);
+    boolean setCurrentBubble(String bubble);
 
     /**
-     * Returns the ID of the currently equipped nameplate for the player.
+     * Sets the bubble data
      *
-     * @return the ID of the equipped nameplate
+     * @param bubble id
+     * @return false if data not loaded
      */
-    String equippedNameplate();
+    boolean setBubbleData(String bubble);
 
     /**
-     * Sets the equipped nameplate for the player.
-     * Operation would fail if player is not loaded.
+     * Gets the bubble data
      *
-     * @param equippedNameplate the new nameplate ID to equip
-     * @return success or not
+     * @return bubble id
      */
-    boolean equippedNameplate(String equippedNameplate);
+    String bubbleData();
+
+    /**
+     * Gets the nameplate currently in use (Includes temp nameplate used in preview)
+     *
+     * @return nameplate
+     */
+    String currentNameplate();
+
+    /**
+     * Sets the nameplate currently in use, which would not be saved
+     *
+     * @param nameplate id
+     * @return false if data not loaded
+     */
+    boolean setCurrentNameplate(String nameplate);
+
+    /**
+     * Gets the nameplate data
+     *
+     * @return the nameplate id
+     */
+    String nameplateData();
+
+    /**
+     * Sets the nameplate data
+     *
+     * @param nameplate id
+     * @return false if data not loaded
+     */
+    boolean setNameplateData(String nameplate);
 
     /**
      * Save the player's current nameplate/bubble to database
      */
     void save();
+
+    /**
+     * Get the player's team view
+     *
+     * @return team view
+     */
+    TeamView teamView();
+
+    /**
+     * Check if the player is initialized
+     *
+     * @return initialized or not
+     */
+    boolean isInitialized();
 }
